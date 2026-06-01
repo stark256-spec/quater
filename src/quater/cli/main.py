@@ -268,6 +268,14 @@ def _remote_call(namespace: argparse.Namespace, unknown: Sequence[str]) -> int:
     )
     if namespace.as_json:
         print_json(response.body)
+    elif "dry_run" in response.body:
+        print(f"Dry run OK: {response.body.get('action', action_name)}")
+        print(f"  {response.body.get('method', '')} {response.body.get('path', '')}")
+        print(f"  arguments hash: {response.body.get('arguments_hash', '')}")
+    elif "error" in response.body:
+        error = response.body["error"]
+        message = error.get("message", "") if isinstance(error, dict) else str(error)
+        print(message or f"status: {response.status_code}")
     else:
         text = str(response.body.get("body", ""))
         if text:
