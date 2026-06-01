@@ -266,7 +266,14 @@ def _remote_call(namespace: argparse.Namespace, unknown: Sequence[str]) -> int:
         dry_run=namespace.dry_run,
         approval_token=approval_token,
     )
-    print_json(response.body)
+    if namespace.as_json:
+        print_json(response.body)
+    else:
+        text = str(response.body.get("body", ""))
+        if text:
+            print(text)
+        else:
+            print(f"status: {response.status_code}")
     ok = response.status_code < 400 and response.body.get("ok") is not False
     return 0 if ok else 1
 

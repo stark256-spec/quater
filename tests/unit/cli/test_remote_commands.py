@@ -419,3 +419,71 @@ def test_cli_remote_call_rejects_empty_approval_token(
     captured = capsys.readouterr()
     assert code == 2
     assert captured.err == "Approval token must not be empty\n"
+
+
+def _setup_remote_call(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    response_body: dict[str, object],
+    *,
+    status_code: int = 200,
+) -> None:
+    quater_home = tmp_path / ".quater"
+    monkeypatch.setenv("QUATER_HOME", str(quater_home))
+    monkeypatch.setattr(
+        "quater.cli.main.fetch_manifest",
+        lambda url, *, token: {"protocol": "quater-actions.v1", "actions": []},
+    )
+    monkeypatch.setattr(
+        "quater.cli.main.call_action",
+        lambda *a, **kw: RemoteResponse(status_code=status_code, body=response_body),
+    )
+    main(["connect", "billing", "https://api.example.com", "--token", "secret"])
+
+
+def test_cli_remote_call_normal_mode_prints_body_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _setup_remote_call(tmp_path, monkeypatch, {"ok": True, "body": "User locked."})
+    capsys.readouterr()
+
+    code = main(["call", "billing", "users.lock"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.out.strip() == "User locked."
+    assert "{" not in captured.out
+
+
+def test_cli_remote_call_json_flag_prints_full_json(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _setup_remote_call(tmp_path, monkeypatch, {"ok": True, "body": "User locked."})
+    capsys.readouterr()
+
+    code = main(["--json", "call", "billing", "users.lock"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    payload = json.loads(captured.out)
+    assert payload["ok"] is True
+    assert payload["body"] == "User locked."
+
+
+def test_cli_remote_call_normal_mode_falls_back_to_status_on_empty_body(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _setup_remote_call(tmp_path, monkeypatch, {"ok": True, "body": ""})
+    capsys.readouterr()
+
+    code = main(["call", "billing", "users.lock"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "status: 200" in captured.out
