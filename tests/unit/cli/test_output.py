@@ -11,6 +11,7 @@ from quater.cli.output import (
     print_action_summary_detail,
     print_action_summary_list,
     print_preflight,
+    print_remote_preflight,
     print_response,
 )
 
@@ -258,3 +259,50 @@ async def test_print_response_returns_exit_status_and_runs_finalizers(
         "status_code": 403,
         "body": "denied",
     }
+
+
+# ── print_remote_preflight ───────────────────────────────────────────────────
+
+
+def test_print_remote_preflight_human_output(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    body = {
+        "dry_run": True,
+        "action": "users.lock",
+        "method": "POST",
+        "path": "/users/lock",
+        "arguments_hash": "abc123",
+    }
+    print_remote_preflight(body, as_json=False)
+    out = capsys.readouterr().out
+    assert "Dry run OK: users.lock" in out
+    assert "  POST /users/lock" in out
+    assert "  arguments hash: abc123" in out
+    assert "{" not in out
+
+
+def test_print_remote_preflight_json_output(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    body = {
+        "dry_run": True,
+        "action": "users.lock",
+        "method": "POST",
+        "path": "/users/lock",
+        "arguments_hash": "abc123",
+    }
+    print_remote_preflight(body, as_json=True)
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["dry_run"] is True
+    assert payload["action"] == "users.lock"
+    assert payload["arguments_hash"] == "abc123"
+
+
+def test_print_remote_preflight_handles_missing_fields(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    print_remote_preflight({"dry_run": True}, as_json=False)
+    out = capsys.readouterr().out
+    assert "Dry run OK: " in out
+    assert "arguments hash: " in out

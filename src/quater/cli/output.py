@@ -121,6 +121,17 @@ def print_action_summary_detail(
     print(dumps_pretty_json(_summary_schema(summary)).decode("utf-8"))
 
 
+def print_remote_preflight(body: dict[str, object], *, as_json: bool) -> None:
+    """Print a dry-run summary received from a remote server."""
+    if as_json:
+        print_json(body)
+        return
+
+    print(f"Dry run OK: {body.get('action', '')}")
+    print(f"  {body.get('method', '')} {body.get('path', '')}")
+    print(f"  arguments hash: {body.get('arguments_hash', '')}")
+
+
 def print_preflight(result: ActionPreflightResult, *, as_json: bool) -> None:
     payload = preflight_payload(result)
     if as_json:
