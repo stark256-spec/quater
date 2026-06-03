@@ -122,14 +122,28 @@ def print_action_summary_detail(
 
 
 def print_remote_preflight(body: dict[str, object], *, as_json: bool) -> None:
-    """Print a dry-run summary received from a remote server."""
+    """Print a dry-run summary received from a remote server.
+
+    Mirrors the five-line format of :func:`print_preflight` so that local
+    and remote dry-run output look identical to the user.
+    """
     if as_json:
         print_json(body)
         return
 
+    needs_approval = bool(body.get("needs_approval", False))
+    approval_provided = bool(body.get("approval_token_provided", False))
+
+    if needs_approval:
+        approval_status = "provided" if approval_provided else "missing"
+    else:
+        approval_status = "not required"
+
     print(f"Dry run OK: {body.get('action', '')}")
     print(f"  {body.get('method', '')} {body.get('path', '')}")
     print(f"  arguments hash: {body.get('arguments_hash', '')}")
+    print(f"  protected action: {_yes_no(needs_approval)}")
+    print(f"  approval token: {approval_status}")
 
 
 def print_preflight(result: ActionPreflightResult, *, as_json: bool) -> None:

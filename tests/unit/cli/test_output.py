@@ -273,12 +273,15 @@ def test_print_remote_preflight_human_output(
         "method": "POST",
         "path": "/users/lock",
         "arguments_hash": "abc123",
+        "needs_approval": False,
     }
     print_remote_preflight(body, as_json=False)
     out = capsys.readouterr().out
     assert "Dry run OK: users.lock" in out
     assert "  POST /users/lock" in out
     assert "  arguments hash: abc123" in out
+    assert "  protected action: no" in out
+    assert "  approval token: not required" in out
     assert "{" not in out
 
 
@@ -299,10 +302,51 @@ def test_print_remote_preflight_json_output(
     assert payload["arguments_hash"] == "abc123"
 
 
+def test_print_remote_preflight_protected_action(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Protected action with approval token provided shows correct status."""
+    body = {
+        "dry_run": True,
+        "action": "users.delete",
+        "method": "DELETE",
+        "path": "/users/42",
+        "arguments_hash": "def456",
+        "needs_approval": True,
+        "approval_token_provided": True,
+    }
+    print_remote_preflight(body, as_json=False)
+    out = capsys.readouterr().out
+    assert "  protected action: yes" in out
+    assert "  approval token: provided" in out
+
+
+def test_print_remote_preflight_protected_action_missing_token(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Protected action without approval token shows 'missing'."""
+    body = {
+        "dry_run": True,
+        "action": "users.delete",
+        "method": "DELETE",
+        "path": "/users/42",
+        "arguments_hash": "def456",
+        "needs_approval": True,
+        "approval_token_provided": False,
+    }
+    print_remote_preflight(body, as_json=False)
+    out = capsys.readouterr().out
+    assert "  protected action: yes" in out
+    assert "  approval token: missing" in out
+
+
 def test_print_remote_preflight_handles_missing_fields(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """Defaults gracefully when optional fields are absent."""
     print_remote_preflight({"dry_run": True}, as_json=False)
     out = capsys.readouterr().out
     assert "Dry run OK: " in out
-    assert "arguments hash: " in out
+    assert "  arguments hash: " in out
+    assert "  protected action: no" in out
+    assert "  approval token: not required" in out

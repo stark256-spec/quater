@@ -503,6 +503,7 @@ def test_cli_remote_call_dry_run_prints_human_readable_summary(
             "method": "POST",
             "path": "/users/lock",
             "arguments_hash": "abc123",
+            "needs_approval": False,
         },
     )
     capsys.readouterr()
@@ -516,6 +517,8 @@ def test_cli_remote_call_dry_run_prints_human_readable_summary(
     assert "POST" in captured.out
     assert "/users/lock" in captured.out
     assert "abc123" in captured.out
+    assert "protected action: no" in captured.out
+    assert "approval token: not required" in captured.out
     assert "{" not in captured.out
 
 
